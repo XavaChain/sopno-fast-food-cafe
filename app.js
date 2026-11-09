@@ -1,18 +1,19 @@
 let menuData = [];
 let rolesData = {};
 let currentRole = null;
-let database = { cooked_logs: [], sold_logs: [] };
+let database = { menu: [], cooked_logs: [], sold_logs: [] };
 
 document.addEventListener('DOMContentLoaded', () => {
     Promise.all([
-        fetch('menu.json').then(res => res.json()),
         fetch('roles.json').then(res => res.json()),
         loadDatabaseFromJSON()
-    ]).then(([menu, roles]) => {
-        menuData = menu;
+    ]).then(([roles]) => {
         rolesData = roles.roles;
-        renderPublicMenu();
-        populateItemSelects();
+        if (database.menu && database.menu.length > 0) {
+            menuData = database.menu;
+            renderPublicMenu();
+            populateItemSelects();
+        }
     }).catch(err => console.error("Initialization error:", err));
 });
 
@@ -22,6 +23,7 @@ async function loadDatabaseFromJSON() {
         const res = await fetch('/api/save');
         if (res.ok) {
             database = await res.json();
+            menuData = database.menu || [];
         }
     } catch (err) {
         console.warn("API route unavailable locally; defaulting to memory structure.", err);
@@ -56,6 +58,7 @@ async function saveToJSONFile(type, logEntry) {
 function renderPublicMenu(filterCategory = 'All') {
     const grid = document.getElementById('menu-grid');
     const filterBar = document.getElementById('category-filter');
+    if (!grid || !filterBar) return;
     grid.innerHTML = '';
 
     const categories = ['All', ...new Set(menuData.map(i => i.category))];
@@ -81,6 +84,8 @@ function renderPublicMenu(filterCategory = 'All') {
 function populateItemSelects() {
     const chefSelect = document.getElementById('chef-item-select');
     const waiterSelect = document.getElementById('waiter-item-select');
+    if (!chefSelect || !waiterSelect) return;
+
     const options = menuData.map(item => `<option value="${item.id}">${item.id}. ${item.name}</option>`).join('');
     chefSelect.innerHTML = options;
     waiterSelect.innerHTML = options;
@@ -88,7 +93,10 @@ function populateItemSelects() {
 }
 
 function handleWaiterItemChange() {
-    const itemId = parseInt(document.getElementById('waiter-item-select').value);
+    const selectElem = document.getElementById('waiter-item-select');
+    if (!selectElem || !selectElem.value) return;
+
+    const itemId = parseInt(selectElem.value);
     const item = menuData.find(i => i.id === itemId);
     const sizeContainer = document.getElementById('waiter-size-container');
     const sizeSelect = document.getElementById('waiter-size-select');
@@ -293,4 +301,4 @@ function exportJSONData() {
     a.href = url;
     a.download = `data_${Date.now()}.json`;
     a.click();
-            }
+}
