@@ -1,37 +1,59 @@
 let menuData = [];
 let rolesData = {};
 let currentRole = null;
-let database = { menu: [], cooked_logs: [], sold_logs: [] };
+let cookedLogs = [];
+let soldLogs = [];
 
 document.addEventListener('DOMContentLoaded', () => {
+    // 1. Always load static menu.json and roles.json FIRST (Guarantees menu never breaks!)
     Promise.all([
-        fetch('roles.json').then(res => res.json()),
-        loadDatabaseFromJSON()
-    ]).then(([roles]) => {
+        fetch('menu.json').then(res => res.json()),
+        fetch('roles.json').then(res => res.json())
+    ]).then(([menu, roles]) => {
+        menuData = menu;
         rolesData = roles.roles;
-        if (database.menu && database.menu.length > 0) {
-            menuData = database.menu;
-            renderPublicMenu();
-            populateItemSelects();
-        }
+        renderPublicMenu();
+        populateItemSelects();
+        loadDatabaseFromJSON();
     }).catch(err => console.error("Initialization error:", err));
 });
 
-// Fetch current data.json content
+// Load logs from GitHub backend
 async function loadDatabaseFromJSON() {
     try {
-        const res = await fetch('/api/save');
-        if (res.ok) {
-            database = await res.json();
-            menuData = database.menu || [];
+        const [cookedRes, soldRes] = await Promise.all([
+            fetch('/api/save?type=cooked'),
+            fetch('/api/save?type=sold')
+        ]);
+
+        if (cookedRes.ok) cookedLogs = await cookedRes.json();
+        if (soldRes.ok) soldLogs = await soldRes.json();
+
+        // Fallback to local storage if API returned empty
+        if (!cookedLogs || cookedLogs.length === 0) {
+            cookedLogs = JSON.parse(localStorage.getItem('restaurant_cooked_logs') || '[]');
+        }
+        if (!soldLogs || soldLogs.length === 0) {
+            soldLogs = JSON.parse(localStorage.getItem('restaurant_sold_logs') || '[]');
         }
     } catch (err) {
-        console.warn("API route unavailable locally; defaulting to memory structure.", err);
+        console.warn("API load failed, using local cache.", err);
+        cookedLogs = JSON.parse(localStorage.getItem('restaurant_cooked_logs') || '[]');
+        soldLogs = JSON.parse(localStorage.getItem('restaurant_sold_logs') || '[]');
     }
 }
 
-// Save entry permanently to GitHub data.json
+// Save entry to GitHub and Local Backup
 async function saveToJSONFile(type, logEntry) {
+    // Save to local backup immediately
+    if (type === 'cooked') {
+        cookedLogs.push(logEntry);
+        localStorage.setItem('restaurant_cooked_logs', JSON.stringify(cookedLogs));
+    } else {
+        soldLogs.push(logEntry);
+        localStorage.setItem('restaurant_sold_logs', JSON.stringify(soldLogs));
+    }
+
     try {
         const res = await fetch('/api/save', {
             method: 'POST',
@@ -40,17 +62,16 @@ async function saveToJSONFile(type, logEntry) {
         });
         const result = await res.json();
         if (res.ok && result.success) {
-            database = result.data;
             return { success: true };
         } else {
             return { 
                 success: false, 
-                error: result.error || 'Unknown Error', 
-                details: result.details || '' 
+                error: result.error || 'GitHub Save Warning', 
+                details: result.details || 'Saved locally on device.' 
             };
         }
     } catch (err) {
-        return { success: false, error: err.message, details: '' };
+        return { success: false, error: err.message, details: 'Saved locally on device.' };
     }
 }
 
@@ -177,17 +198,17 @@ document.getElementById('chef-form').addEventListener('submit', async (e) => {
     };
 
     const res = await saveToJSONFile('cooked', log);
+    renderChefLogs();
     if (res.success) {
-        alert('রান্না এনট্রি data.json এ সেভ হয়েছে!');
-        renderChefLogs();
+        alert('রান্না এনট্রি cooked.json এ সেভ হয়েছে!');
     } else {
-        alert(`ত্রুটি: ${res.error}\nবিবরণ: ${res.details}`);
+        alert(`লোকালি সেভ হয়েছে! (GitHub সঙ্কলন সতর্কবার্তা: ${res.error})`);
     }
 });
 
 function renderChefLogs() {
     const tbody = document.getElementById('chef-log-tbody');
-    tbody.innerHTML = (database.cooked_logs || []).slice().reverse().map(l => `
+    tbody.innerHTML = (cookedLogs || []).slice().reverse().map(l => `
         <tr>
             <td>${l.timestamp}</td>
             <td>${l.itemName}</td>
@@ -220,17 +241,17 @@ document.getElementById('waiter-form').addEventListener('submit', async (e) => {
     };
 
     const res = await saveToJSONFile('sold', log);
+    renderWaiterLogs();
     if (res.success) {
-        alert('বিক্রি এনট্রি data.json এ সেভ হয়েছে!');
-        renderWaiterLogs();
+        alert('বিক্রি এনট্রি sold.json এ সেভ হয়েছে!');
     } else {
-        alert(`ত্রুটি: ${res.error}\nবিবরণ: ${res.details}`);
+        alert(`লোকালি সেভ হয়েছে! (GitHub সঙ্কলন সতর্কবার্তা: ${res.error})`);
     }
 });
 
 function renderWaiterLogs() {
     const tbody = document.getElementById('waiter-log-tbody');
-    tbody.innerHTML = (database.sold_logs || []).slice().reverse().map(l => `
+    tbody.innerHTML = (soldLogs || []).slice().reverse().map(l => `
         <tr>
             <td>${l.timestamp}</td>
             <td>${l.itemName}</td>
@@ -242,9 +263,6 @@ function renderWaiterLogs() {
 
 // Admin Dashboard
 function renderAdminDashboard() {
-    const cookedLogs = database.cooked_logs || [];
-    const soldLogs = database.sold_logs || [];
-
     let totalRevenue = soldLogs.reduce((sum, l) => sum + l.totalPrice, 0);
     let totalCooked = cookedLogs.reduce((sum, l) => sum + l.quantity, 0);
     let totalSold = soldLogs.reduce((sum, l) => sum + l.quantity, 0);
@@ -255,17 +273,17 @@ function renderAdminDashboard() {
 
     const tbody = document.getElementById('admin-summary-tbody');
     tbody.innerHTML = menuData.map(item => {
-        let cookedQty = cookedLogs.filter(l => l.itemId === item.id).reduce((sum, l) => sum + l.quantity, 0);
-        let soldItems = soldLogs.filter(l => l.itemId === item.id);
-        let soldQty = soldItems.reduce((sum, l) => sum + l.quantity, 0);
-        let revenue = soldItems.reduce((sum, l) => sum + l.totalPrice, 0);
+        let itemCookedQty = cookedLogs.filter(l => l.itemId === item.id).reduce((sum, l) => sum + l.quantity, 0);
+        let itemSoldEntries = soldLogs.filter(l => l.itemId === item.id);
+        let itemSoldQty = itemSoldEntries.reduce((sum, l) => sum + l.quantity, 0);
+        let revenue = itemSoldEntries.reduce((sum, l) => sum + l.totalPrice, 0);
 
         return `
             <tr>
                 <td>#${item.id} ${item.name}</td>
-                <td>${cookedQty}</td>
-                <td>${soldQty}</td>
-                <td>${cookedQty - soldQty}</td>
+                <td>${itemCookedQty}</td>
+                <td>${itemSoldQty}</td>
+                <td>${itemCookedQty - itemSoldQty}</td>
                 <td>৳ ${revenue}</td>
             </tr>
         `;
@@ -274,10 +292,10 @@ function renderAdminDashboard() {
 
 // Owner Dashboard
 function renderOwnerDashboard() {
-    const cooked = (database.cooked_logs || []).map(l => ({...l, type: 'Cooked', price: '-'}));
-    const sold = (database.sold_logs || []).map(l => ({...l, type: 'Sold', price: `৳ ${l.totalPrice}`}));
+    const cooked = cookedLogs.map(l => ({...l, type: 'Cooked', price: '-'}));
+    const sold = soldLogs.map(l => ({...l, type: 'Sold', price: `৳ ${l.totalPrice}`}));
 
-    const totalRevenue = (database.sold_logs || []).reduce((sum, l) => sum + l.totalPrice, 0);
+    const totalRevenue = soldLogs.reduce((sum, l) => sum + l.totalPrice, 0);
     document.getElementById('owner-stat-revenue').innerText = `৳ ${totalRevenue}`;
     document.getElementById('owner-stat-logs').innerText = cooked.length + sold.length;
 
@@ -295,10 +313,11 @@ function renderOwnerDashboard() {
 }
 
 function exportJSONData() {
-    const blob = new Blob([JSON.stringify(database, null, 2)], { type: 'application/json' });
+    const data = { cooked_logs: cookedLogs, sold_logs: soldLogs };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `data_${Date.now()}.json`;
+    a.download = `sopno_restaurant_data_${Date.now()}.json`;
     a.click();
 }
