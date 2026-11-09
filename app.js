@@ -1,27 +1,51 @@
 let menuData = [];
 let rolesData = {};
 let currentRole = null;
+let database = { cooked_logs: [], sold_logs: [] };
 
-// Initialize Storage if empty
-if (!localStorage.getItem('restaurant_cooked_logs')) {
-    localStorage.setItem('restaurant_cooked_logs', JSON.stringify([]));
-}
-if (!localStorage.getItem('restaurant_sold_logs')) {
-    localStorage.setItem('restaurant_sold_logs', JSON.stringify([]));
-}
-
-// Fetch Menu & Roles on startup
 document.addEventListener('DOMContentLoaded', () => {
     Promise.all([
         fetch('menu.json').then(res => res.json()),
-        fetch('roles.json').then(res => res.json())
+        fetch('roles.json').then(res => res.json()),
+        loadDatabaseFromJSON()
     ]).then(([menu, roles]) => {
         menuData = menu;
         rolesData = roles.roles;
         renderPublicMenu();
         populateItemSelects();
-    }).catch(err => console.error("Error loading JSON files:", err));
+    }).catch(err => console.error("Initialization error:", err));
 });
+
+// Fetch current data.json content
+async function loadDatabaseFromJSON() {
+    try {
+        const res = await fetch('/api/save');
+        if (res.ok) {
+            database = await res.json();
+        }
+    } catch (err) {
+        console.warn("API route unavailable locally; defaulting to memory structure.", err);
+    }
+}
+
+// Save entry permanently to GitHub data.json
+async function saveToJSONFile(type, logEntry) {
+    try {
+        const res = await fetch('/api/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: type, log: logEntry })
+        });
+        if (res.ok) {
+            const result = await res.json();
+            database = result.data;
+            return true;
+        }
+    } catch (err) {
+        console.error("Failed to save to data.json:", err);
+    }
+    return false;
+}
 
 // Render Public Menu
 function renderPublicMenu(filterCategory = 'All') {
@@ -49,15 +73,12 @@ function renderPublicMenu(filterCategory = 'All') {
     });
 }
 
-// Populate Select Dropdowns
 function populateItemSelects() {
     const chefSelect = document.getElementById('chef-item-select');
     const waiterSelect = document.getElementById('waiter-item-select');
-
     const options = menuData.map(item => `<option value="${item.id}">${item.id}. ${item.name}</option>`).join('');
     chefSelect.innerHTML = options;
     waiterSelect.innerHTML = options;
-
     handleWaiterItemChange();
 }
 
@@ -76,11 +97,8 @@ function handleWaiterItemChange() {
     }
 }
 
-// Modals & Authentication
-function openLoginModal() {
-    document.getElementById('login-modal').style.display = 'flex';
-}
-
+// Authentication
+function openLoginModal() { document.getElementById('login-modal').style.display = 'flex'; }
 function closeLoginModal() {
     document.getElementById('login-modal').style.display = 'none';
     document.getElementById('login-error').innerText = '';
@@ -118,10 +136,12 @@ function logout() {
     switchView('public-menu');
 }
 
-function switchView(viewId) {
+async function switchView(viewId) {
     document.querySelectorAll('.view-section').forEach(sec => sec.style.display = 'none');
     const target = document.getElementById(viewId);
     if (target) target.style.display = 'block';
+
+    await loadDatabaseFromJSON();
 
     if (viewId === 'chef-portal') renderChefLogs();
     if (viewId === 'waiter-portal') renderWaiterLogs();
@@ -129,8 +149,8 @@ function switchView(viewId) {
     if (viewId === 'owner-portal') renderOwnerDashboard();
 }
 
-// Chef Logic (Cooked items logging)
-document.getElementById('chef-form').addEventListener('submit', (e) => {
+// Chef Submit
+document.getElementById('chef-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const itemId = parseInt(document.getElementById('chef-item-select').value);
     const qty = parseInt(document.getElementById('chef-qty').value);
@@ -143,18 +163,18 @@ document.getElementById('chef-form').addEventListener('submit', (e) => {
         quantity: qty
     };
 
-    const logs = JSON.parse(localStorage.getItem('restaurant_cooked_logs'));
-    logs.push(log);
-    localStorage.setItem('restaurant_cooked_logs', JSON.stringify(logs));
-
-    alert('রান্না এনট্রি সফলভাবে সেভ হয়েছে!');
-    renderChefLogs();
+    const success = await saveToJSONFile('cooked', log);
+    if (success) {
+        alert('রান্না এনট্রি data.json এ সেভ হয়েছে!');
+        renderChefLogs();
+    } else {
+        alert('সেভ করতে সমস্যা হয়েছে। Vercel environment keys চেক করুন।');
+    }
 });
 
 function renderChefLogs() {
-    const logs = JSON.parse(localStorage.getItem('restaurant_cooked_logs'));
     const tbody = document.getElementById('chef-log-tbody');
-    tbody.innerHTML = logs.slice().reverse().map(l => `
+    tbody.innerHTML = database.cooked_logs.slice().reverse().map(l => `
         <tr>
             <td>${l.timestamp}</td>
             <td>${l.itemName}</td>
@@ -163,8 +183,8 @@ function renderChefLogs() {
     `).join('');
 }
 
-// Waiter Logic (Sold items logging)
-document.getElementById('waiter-form').addEventListener('submit', (e) => {
+// Waiter Submit
+document.getElementById('waiter-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const itemId = parseInt(document.getElementById('waiter-item-select').value);
     const qty = parseInt(document.getElementById('waiter-qty').value);
@@ -178,28 +198,26 @@ document.getElementById('waiter-form').addEventListener('submit', (e) => {
         unitPrice = item.prices[sizeSelected];
     }
 
-    const totalPrice = unitPrice * qty;
-
     const log = {
         timestamp: new Date().toLocaleString('bn-BD'),
         itemId: item.id,
         itemName: item.name + (sizeSelected ? ` (${sizeSelected})` : ''),
         quantity: qty,
-        totalPrice: totalPrice
+        totalPrice: unitPrice * qty
     };
 
-    const logs = JSON.parse(localStorage.getItem('restaurant_sold_logs'));
-    logs.push(log);
-    localStorage.setItem('restaurant_sold_logs', JSON.stringify(logs));
-
-    alert('বিক্রি এনট্রি সফলভাবে সেভ হয়েছে!');
-    renderWaiterLogs();
+    const success = await saveToJSONFile('sold', log);
+    if (success) {
+        alert('বিক্রি এনট্রি data.json এ সেভ হয়েছে!');
+        renderWaiterLogs();
+    } else {
+        alert('সেভ করতে সমস্যা হয়েছে। Vercel environment keys চেক করুন।');
+    }
 });
 
 function renderWaiterLogs() {
-    const logs = JSON.parse(localStorage.getItem('restaurant_sold_logs'));
     const tbody = document.getElementById('waiter-log-tbody');
-    tbody.innerHTML = logs.slice().reverse().map(l => `
+    tbody.innerHTML = database.sold_logs.slice().reverse().map(l => `
         <tr>
             <td>${l.timestamp}</td>
             <td>${l.itemName}</td>
@@ -211,12 +229,9 @@ function renderWaiterLogs() {
 
 // Admin Dashboard
 function renderAdminDashboard() {
-    const cookedLogs = JSON.parse(localStorage.getItem('restaurant_cooked_logs'));
-    const soldLogs = JSON.parse(localStorage.getItem('restaurant_sold_logs'));
-
-    let totalRevenue = soldLogs.reduce((sum, l) => sum + l.totalPrice, 0);
-    let totalCooked = cookedLogs.reduce((sum, l) => sum + l.quantity, 0);
-    let totalSold = soldLogs.reduce((sum, l) => sum + l.quantity, 0);
+    let totalRevenue = database.sold_logs.reduce((sum, l) => sum + l.totalPrice, 0);
+    let totalCooked = database.cooked_logs.reduce((sum, l) => sum + l.quantity, 0);
+    let totalSold = database.sold_logs.reduce((sum, l) => sum + l.quantity, 0);
 
     document.getElementById('stat-total-revenue').innerText = `৳ ${totalRevenue}`;
     document.getElementById('stat-total-cooked').innerText = totalCooked;
@@ -224,8 +239,8 @@ function renderAdminDashboard() {
 
     const tbody = document.getElementById('admin-summary-tbody');
     tbody.innerHTML = menuData.map(item => {
-        let cookedQty = cookedLogs.filter(l => l.itemId === item.id).reduce((sum, l) => sum + l.quantity, 0);
-        let soldItems = soldLogs.filter(l => l.itemId === item.id);
+        let cookedQty = database.cooked_logs.filter(l => l.itemId === item.id).reduce((sum, l) => sum + l.quantity, 0);
+        let soldItems = database.sold_logs.filter(l => l.itemId === item.id);
         let soldQty = soldItems.reduce((sum, l) => sum + l.quantity, 0);
         let revenue = soldItems.reduce((sum, l) => sum + l.totalPrice, 0);
 
@@ -241,19 +256,18 @@ function renderAdminDashboard() {
     }).join('');
 }
 
-// Owner Dashboard & JSON Export
+// Owner Dashboard
 function renderOwnerDashboard() {
-    const cookedLogs = JSON.parse(localStorage.getItem('restaurant_cooked_logs')).map(l => ({...l, type: 'Cooked', price: '-'}));
-    const soldLogs = JSON.parse(localStorage.getItem('restaurant_sold_logs')).map(l => ({...l, type: 'Sold', price: `৳ ${l.totalPrice}`}));
+    const cooked = database.cooked_logs.map(l => ({...l, type: 'Cooked', price: '-'}));
+    const sold = database.sold_logs.map(l => ({...l, type: 'Sold', price: `৳ ${l.totalPrice}`}));
 
-    const totalRevenue = soldLogs.reduce((sum, l) => sum + (parseInt(l.price.replace('৳ ', '')) || 0), 0);
+    const totalRevenue = database.sold_logs.reduce((sum, l) => sum + l.totalPrice, 0);
     document.getElementById('owner-stat-revenue').innerText = `৳ ${totalRevenue}`;
-    document.getElementById('owner-stat-logs').innerText = cookedLogs.length + soldLogs.length;
+    document.getElementById('owner-stat-logs').innerText = cooked.length + sold.length;
 
-    const combined = [...cookedLogs, ...soldLogs].sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
-
+    const combined = [...cooked, ...sold];
     const tbody = document.getElementById('owner-all-logs-tbody');
-    tbody.innerHTML = combined.map(l => `
+    tbody.innerHTML = combined.slice().reverse().map(l => `
         <tr>
             <td><strong>${l.type}</strong></td>
             <td>${l.timestamp}</td>
@@ -265,17 +279,11 @@ function renderOwnerDashboard() {
 }
 
 function exportJSONData() {
-    const data = {
-        cooked_logs: JSON.parse(localStorage.getItem('restaurant_cooked_logs')),
-        sold_logs: JSON.parse(localStorage.getItem('restaurant_sold_logs')),
-        exported_at: new Date().toLocaleString()
-    };
-
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify(database, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `sopno_fast_food_backup_${Date.now()}.json`;
+    a.download = `data_${Date.now()}.json`;
     a.click();
-          }
-                                       
+}
+    
