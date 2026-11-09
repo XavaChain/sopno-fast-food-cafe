@@ -1,0 +1,26 @@
+{
+  "roles": {
+    "owner": {
+      "name": "Owner",
+      "password": "155249",
+      "permissions": ["add_remove_roles", "check_status", "view_all_logs", "export_json"]
+    },
+    "admin": {
+      "name": "Admin",
+      "password": "977688",
+      "permissions": ["check_cooked_quantity", "check_sold_quantity", "check_total_revenue"]
+    },
+    "chef": {
+      "name": "Chef",
+      "password": "11229900",
+      "permissions": ["input_cooked_items"],
+      "allow_withdraw": false
+    },
+    "waiter": {
+      "name": "Waiter",
+      "password": "33552278",
+      "permissions": ["input_sold_items"],
+      "allow_withdraw": false
+    }
+  }
+}
