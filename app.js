@@ -5,7 +5,6 @@ let cookedLogs = [];
 let soldLogs = [];
 
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Always load static menu.json and roles.json FIRST (Guarantees menu never breaks!)
     Promise.all([
         fetch('menu.json').then(res => res.json()),
         fetch('roles.json').then(res => res.json())
@@ -18,7 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }).catch(err => console.error("Initialization error:", err));
 });
 
-// Load logs from GitHub backend
+// Load logs from Vercel API
 async function loadDatabaseFromJSON() {
     try {
         const [cookedRes, soldRes] = await Promise.all([
@@ -29,23 +28,20 @@ async function loadDatabaseFromJSON() {
         if (cookedRes.ok) cookedLogs = await cookedRes.json();
         if (soldRes.ok) soldLogs = await soldRes.json();
 
-        // Fallback to local storage if API returned empty
-        if (!cookedLogs || cookedLogs.length === 0) {
-            cookedLogs = JSON.parse(localStorage.getItem('restaurant_cooked_logs') || '[]');
-        }
-        if (!soldLogs || soldLogs.length === 0) {
-            soldLogs = JSON.parse(localStorage.getItem('restaurant_sold_logs') || '[]');
-        }
+        if (!Array.isArray(cookedLogs)) cookedLogs = [];
+        if (!Array.isArray(soldLogs)) soldLogs = [];
+
+        localStorage.setItem('restaurant_cooked_logs', JSON.stringify(cookedLogs));
+        localStorage.setItem('restaurant_sold_logs', JSON.stringify(soldLogs));
     } catch (err) {
-        console.warn("API load failed, using local cache.", err);
+        console.warn("Vercel API load failed, using local cache.", err);
         cookedLogs = JSON.parse(localStorage.getItem('restaurant_cooked_logs') || '[]');
         soldLogs = JSON.parse(localStorage.getItem('restaurant_sold_logs') || '[]');
     }
 }
 
-// Save entry to GitHub and Local Backup
+// Save entry to Vercel API with raw text inspection
 async function saveToJSONFile(type, logEntry) {
-    // Save to local backup immediately
     if (type === 'cooked') {
         cookedLogs.push(logEntry);
         localStorage.setItem('restaurant_cooked_logs', JSON.stringify(cookedLogs));
@@ -60,18 +56,30 @@ async function saveToJSONFile(type, logEntry) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ type: type, log: logEntry })
         });
-        const result = await res.json();
+        
+        const responseText = await res.text();
+        let result = {};
+        try {
+            result = JSON.parse(responseText);
+        } catch (e) {
+            return { 
+                success: false, 
+                error: `Vercel API returned non-JSON (HTTP ${res.status})`, 
+                details: responseText.slice(0, 300) 
+            };
+        }
+
         if (res.ok && result.success) {
             return { success: true };
         } else {
             return { 
                 success: false, 
-                error: result.error || 'GitHub Save Warning', 
-                details: result.details || 'Saved locally on device.' 
+                error: result.error || `Vercel API Error (HTTP ${res.status})`, 
+                details: result.details || responseText 
             };
         }
     } catch (err) {
-        return { success: false, error: err.message, details: 'Saved locally on device.' };
+        return { success: false, error: err.message, details: 'Network request failed to reach /api/save' };
     }
 }
 
@@ -202,7 +210,7 @@ document.getElementById('chef-form').addEventListener('submit', async (e) => {
     if (res.success) {
         alert('রান্না এনট্রি cooked.json এ সেভ হয়েছে!');
     } else {
-        alert(`লোকালি সেভ হয়েছে! (GitHub সঙ্কলন সতর্কবার্তা: ${res.error})`);
+        alert(`Vercel API সেভ করতে পারেনি:\n${res.error}\n\nবিবরণ:\n${res.details}`);
     }
 });
 
@@ -245,7 +253,7 @@ document.getElementById('waiter-form').addEventListener('submit', async (e) => {
     if (res.success) {
         alert('বিক্রি এনট্রি sold.json এ সেভ হয়েছে!');
     } else {
-        alert(`লোকালি সেভ হয়েছে! (GitHub সঙ্কলন সতর্কবার্তা: ${res.error})`);
+        alert(`Vercel API সেভ করতে পারেনি:\n${res.error}\n\nবিবরণ:\n${res.details}`);
     }
 });
 
