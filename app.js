@@ -36,15 +36,20 @@ async function saveToJSONFile(type, logEntry) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ type: type, log: logEntry })
         });
-        if (res.ok) {
-            const result = await res.json();
+        const result = await res.json();
+        if (res.ok && result.success) {
             database = result.data;
-            return true;
+            return { success: true };
+        } else {
+            return { 
+                success: false, 
+                error: result.error || 'Unknown Error', 
+                details: result.details || '' 
+            };
         }
     } catch (err) {
-        console.error("Failed to save to data.json:", err);
+        return { success: false, error: err.message, details: '' };
     }
-    return false;
 }
 
 // Render Public Menu
@@ -163,18 +168,18 @@ document.getElementById('chef-form').addEventListener('submit', async (e) => {
         quantity: qty
     };
 
-    const success = await saveToJSONFile('cooked', log);
-    if (success) {
+    const res = await saveToJSONFile('cooked', log);
+    if (res.success) {
         alert('রান্না এনট্রি data.json এ সেভ হয়েছে!');
         renderChefLogs();
     } else {
-        alert('সেভ করতে সমস্যা হয়েছে। Vercel environment keys চেক করুন।');
+        alert(`ত্রুটি: ${res.error}\nবিবরণ: ${res.details}`);
     }
 });
 
 function renderChefLogs() {
     const tbody = document.getElementById('chef-log-tbody');
-    tbody.innerHTML = database.cooked_logs.slice().reverse().map(l => `
+    tbody.innerHTML = (database.cooked_logs || []).slice().reverse().map(l => `
         <tr>
             <td>${l.timestamp}</td>
             <td>${l.itemName}</td>
@@ -206,18 +211,18 @@ document.getElementById('waiter-form').addEventListener('submit', async (e) => {
         totalPrice: unitPrice * qty
     };
 
-    const success = await saveToJSONFile('sold', log);
-    if (success) {
+    const res = await saveToJSONFile('sold', log);
+    if (res.success) {
         alert('বিক্রি এনট্রি data.json এ সেভ হয়েছে!');
         renderWaiterLogs();
     } else {
-        alert('সেভ করতে সমস্যা হয়েছে। Vercel environment keys চেক করুন।');
+        alert(`ত্রুটি: ${res.error}\nবিবরণ: ${res.details}`);
     }
 });
 
 function renderWaiterLogs() {
     const tbody = document.getElementById('waiter-log-tbody');
-    tbody.innerHTML = database.sold_logs.slice().reverse().map(l => `
+    tbody.innerHTML = (database.sold_logs || []).slice().reverse().map(l => `
         <tr>
             <td>${l.timestamp}</td>
             <td>${l.itemName}</td>
@@ -229,9 +234,12 @@ function renderWaiterLogs() {
 
 // Admin Dashboard
 function renderAdminDashboard() {
-    let totalRevenue = database.sold_logs.reduce((sum, l) => sum + l.totalPrice, 0);
-    let totalCooked = database.cooked_logs.reduce((sum, l) => sum + l.quantity, 0);
-    let totalSold = database.sold_logs.reduce((sum, l) => sum + l.quantity, 0);
+    const cookedLogs = database.cooked_logs || [];
+    const soldLogs = database.sold_logs || [];
+
+    let totalRevenue = soldLogs.reduce((sum, l) => sum + l.totalPrice, 0);
+    let totalCooked = cookedLogs.reduce((sum, l) => sum + l.quantity, 0);
+    let totalSold = soldLogs.reduce((sum, l) => sum + l.quantity, 0);
 
     document.getElementById('stat-total-revenue').innerText = `৳ ${totalRevenue}`;
     document.getElementById('stat-total-cooked').innerText = totalCooked;
@@ -239,8 +247,8 @@ function renderAdminDashboard() {
 
     const tbody = document.getElementById('admin-summary-tbody');
     tbody.innerHTML = menuData.map(item => {
-        let cookedQty = database.cooked_logs.filter(l => l.itemId === item.id).reduce((sum, l) => sum + l.quantity, 0);
-        let soldItems = database.sold_logs.filter(l => l.itemId === item.id);
+        let cookedQty = cookedLogs.filter(l => l.itemId === item.id).reduce((sum, l) => sum + l.quantity, 0);
+        let soldItems = soldLogs.filter(l => l.itemId === item.id);
         let soldQty = soldItems.reduce((sum, l) => sum + l.quantity, 0);
         let revenue = soldItems.reduce((sum, l) => sum + l.totalPrice, 0);
 
@@ -258,10 +266,10 @@ function renderAdminDashboard() {
 
 // Owner Dashboard
 function renderOwnerDashboard() {
-    const cooked = database.cooked_logs.map(l => ({...l, type: 'Cooked', price: '-'}));
-    const sold = database.sold_logs.map(l => ({...l, type: 'Sold', price: `৳ ${l.totalPrice}`}));
+    const cooked = (database.cooked_logs || []).map(l => ({...l, type: 'Cooked', price: '-'}));
+    const sold = (database.sold_logs || []).map(l => ({...l, type: 'Sold', price: `৳ ${l.totalPrice}`}));
 
-    const totalRevenue = database.sold_logs.reduce((sum, l) => sum + l.totalPrice, 0);
+    const totalRevenue = (database.sold_logs || []).reduce((sum, l) => sum + l.totalPrice, 0);
     document.getElementById('owner-stat-revenue').innerText = `৳ ${totalRevenue}`;
     document.getElementById('owner-stat-logs').innerText = cooked.length + sold.length;
 
@@ -285,5 +293,4 @@ function exportJSONData() {
     a.href = url;
     a.download = `data_${Date.now()}.json`;
     a.click();
-}
-    
+            }
