@@ -1,5 +1,4 @@
 export default async function handler(req, res) {
-  // Enforce JSON headers
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
@@ -13,8 +12,8 @@ export default async function handler(req, res) {
     const GITHUB_TOKEN = (process.env.GITHUB_TOKEN || '').trim();
     const REPO_OWNER = (process.env.REPO_OWNER || '').trim();
     const REPO_NAME = (process.env.REPO_NAME || '').trim();
+    const BRANCH = (process.env.GITHUB_BRANCH || 'main').trim();
 
-    // Check Vercel environment keys
     if (!GITHUB_TOKEN || !REPO_OWNER || !REPO_NAME) {
       return res.status(500).json({ 
         error: 'Vercel API Error: Missing Environment Variables',
@@ -45,9 +44,9 @@ export default async function handler(req, res) {
       'User-Agent': 'sopno-fast-food-app'
     };
 
-    // GET Request: Fetch logs from GitHub
+    // GET Request
     if (req.method === 'GET') {
-      const response = await fetch(url, { headers, cache: 'no-store' });
+      const response = await fetch(`${url}?ref=${BRANCH}`, { headers, cache: 'no-store' });
       const responseText = await response.text();
 
       if (!response.ok) {
@@ -64,14 +63,14 @@ export default async function handler(req, res) {
       return res.status(200).json(JSON.parse(content));
     }
 
-    // POST Request: Write entry to GitHub JSON file
+    // POST Request
     if (req.method === 'POST') {
       const log = body.log;
       if (!log) {
         return res.status(400).json({ error: 'Vercel API Error: Missing log payload' });
       }
 
-      const getFileRes = await fetch(url, { headers, cache: 'no-store' });
+      const getFileRes = await fetch(`${url}?ref=${BRANCH}`, { headers, cache: 'no-store' });
       let logsList = [];
       let fileSha = null;
 
@@ -98,7 +97,8 @@ export default async function handler(req, res) {
       const updatedBase64 = Buffer.from(JSON.stringify(logsList, null, 2), 'utf-8').toString('base64');
       const putBody = {
         message: `Update ${targetFile}: Added new ${type} entry`,
-        content: updatedBase64
+        content: updatedBase64,
+        branch: BRANCH
       };
       if (fileSha) putBody.sha = fileSha;
 
