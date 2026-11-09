@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>সপ্ন Fast Food & ক্যাফে</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="navbar">
+        <div class="logo">সপ্ন Fast Food & ক্যাফে</div>
+        <nav>
+            <button onclick="switchView('public-menu')" class="nav-btn">মেনু (Menu)</button>
+            <button onclick="openLoginModal()" class="nav-btn login-btn" id="login-trigger">লগইন (Login)</button>
+            <button onclick="logout()" class="nav-btn logout-btn" id="logout-trigger" style="display:none;">লগআউট</button>
+        </nav>
+    </header>
+
+    <main class="container">
+        <!-- Hero Section -->
+        <section id="hero-section" class="hero">
+            <div class="hero-content">
+                <h1>স্বাগতম সপ্ন Fast Food & ক্যাফে-তে</h1>
+                <p>সুস্বাদু ও তাজা ফাস্ট ফুডের অনন্য ঠিকানা</p>
+            </div>
+            <div class="hero-image">
+                <img src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1000&q=80" alt="Restaurant Frontend Photo">
+            </div>
+        </section>
+
+        <!-- Public Menu Section -->
+        <section id="public-menu" class="view-section active">
+            <h2>আমাদের মেনু তালিকা</h2>
+            <div id="category-filter" class="filter-bar"></div>
+            <div id="menu-grid" class="menu-grid"></div>
+        </section>
+
+        <!-- Chef Portal -->
+        <section id="chef-portal" class="view-section" style="display:none;">
+            <h2>🍳 Chef Portal (রান্নাঘর এন্ট্রি)</h2>
+            <p class="warning-text">⚠️ শেখদের জন্য সতর্কবার্তা: আপনার ইনপুট পরবর্তীতে মোছা বা পরিবর্তন করা যাবে না।</p>
+            <form id="chef-form" class="portal-form">
+                <label for="chef-item-select">আইটেম সিলেক্ট করুন:</label>
+                <select id="chef-item-select" required></select>
+                
+                <label for="chef-qty">তৈরিকৃত পরিমাণ (Quantity):</label>
+                <input type="number" id="chef-qty" min="1" value="1" required>
+
+                <button type="submit" class="action-btn">রান্না রেকর্ড করুন</button>
+            </form>
+
+            <h3>আপনার সাম্প্রতিক রান্না এনট্রি</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>তারিখ ও সময়</th>
+                            <th>আইটেম</th>
+                            <th>পরিমাণ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="chef-log-tbody"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Waiter Portal -->
+        <section id="waiter-portal" class="view-section" style="display:none;">
+            <h2>🛎️ Waiter Portal (বিক্রি এন্ট্রি)</h2>
+            <p class="warning-text">⚠️ ওয়েটারদের জন্য সতর্কবার্তা: আপনার ইনপুট পরবর্তীতে মোছা বা পরিবর্তন করা যাবে না।</p>
+            <form id="waiter-form" class="portal-form">
+                <label for="waiter-item-select">আইটেম সিলেক্ট করুন:</label>
+                <select id="waiter-item-select" onchange="handleWaiterItemChange()" required></select>
+
+                <div id="waiter-size-container" style="display:none;">
+                    <label for="waiter-size-select">সাইজ পছন্দ করুন:</label>
+                    <select id="waiter-size-select"></select>
+                </div>
+
+                <label for="waiter-qty">বিক্রিত পরিমাণ (Quantity):</label>
+                <input type="number" id="waiter-qty" min="1" value="1" required>
+
+                <button type="submit" class="action-btn">বিক্রি রেকর্ড করুন</button>
+            </form>
+
+            <h3>আপনার সাম্প্রতিক বিক্রি এনট্রি</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>তারিখ ও সময়</th>
+                            <th>আইটেম</th>
+                            <th>পরিমাণ</th>
+                            <th>মোট মূল্য (৳)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="waiter-log-tbody"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Admin Portal -->
+        <section id="admin-portal" class="view-section" style="display:none;">
+            <h2>📊 Admin Dashboard (হিসাব ও স্টক)</h2>
+            <div class="stats-cards">
+                <div class="card">
+                    <h3>মোট মোট বিক্রি মূল্য</h3>
+                    <p id="stat-total-revenue">৳ 0</p>
+                </div>
+                <div class="card">
+                    <h3>মোট রান্নাকৃত পরিমাণ</h3>
+                    <p id="stat-total-cooked">0</p>
+                </div>
+                <div class="card">
+                    <h3>মোট বিক্রিত পরিমাণ</h3>
+                    <p id="stat-total-sold">0</p>
+                </div>
+            </div>
+
+            <h3>আইটেম ভিত্তিক cooked & sold স্ট্যাটাস</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>আইটেম নাম</th>
+                            <th>মোট রান্না (Cooked)</th>
+                            <th>মোট বিক্রি (Sold)</th>
+                            <th>অবশিষ্ট (Stock)</th>
+                            <th>মোট বিক্রি মূল্য (৳)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-summary-tbody"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Owner Portal -->
+        <section id="owner-portal" class="view-section" style="display:none;">
+            <h2>👑 Owner Dashboard (সর্বোচ্চ নিয়ন্ত্রণ)</h2>
+            <div class="stats-cards">
+                <div class="card">
+                    <h3>মোট রেভিনিউ</h3>
+                    <p id="owner-stat-revenue">৳ 0</p>
+                </div>
+                <div class="card">
+                    <h3>মোট এনট্রি রেকর্ড</h3>
+                    <p id="owner-stat-logs">0</p>
+                </div>
+            </div>
+
+            <div class="owner-controls">
+                <button onclick="exportJSONData()" class="action-btn">ডাটাবেস ব্যাকআপ ডাউনলোড করুন (JSON)</button>
+            </div>
+
+            <h3>সকল সেশন ও অ্যাক্টিভিটি লগ</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>টাইপ</th>
+                            <th>তারিখ ও সময়</th>
+                            <th>আইটেম</th>
+                            <th>পরিমাণ</th>
+                            <th>মূল্য (৳)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="owner-all-logs-tbody"></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <!-- Login Modal -->
+    <div id="login-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeLoginModal()">&times;</span>
+            <h3>সিস্টেম লগইন</h3>
+            <p>আপনার রোল অ্যাক্সেস করতে পাসওয়ার্ড প্রবেশ করান:</p>
+            <input type="password" id="role-password" placeholder="পাসওয়ার্ড দিন">
+            <button onclick="authenticateRole()" class="action-btn">প্রবেশ করুন</button>
+            <p id="login-error" class="error-msg"></p>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+  </html>
+  
