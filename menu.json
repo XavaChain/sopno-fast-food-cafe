@@ -1,7 +1,7 @@
 [
   { "id": 1, "category": "Fuchka / Jhalmuri", "name": "নরমাল ফুচকা ৮ পিছ", "price": 60 },
   { "id": 2, "category": "Fuchka / Jhalmuri", "name": "স্পেশাল ফুচকা ১২ পিছ", "price": 100 },
-  { "id": 3, "category": "Fuchka / Jhalmuri", "name": "ডাই ফুচকা ৮ পিছ", "price": 100 },
+  { "id": 3, "category": "Fuchka / Jhalmuri", "name": "দই ফুচকা ৮ পিছ", "price": 100 },
   { "id": 4, "category": "Fuchka / Jhalmuri", "name": "নাগা ফুচকা ৮ পিছ", "price": 100 },
   { "id": 5, "category": "Fuchka / Jhalmuri", "name": "মিনি ফুচকা ৮ পিছ", "price": 80 },
   { "id": 6, "category": "Fuchka / Jhalmuri", "name": "নরমাল ঝালমুড়ি ১ প্লেট", "price": 50 },
