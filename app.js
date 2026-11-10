@@ -1,121 +1,12 @@
-const WHATSAPP_BUSINESS_NUMBER = "+8801759087421";
-
-let selectedOrderItem = null;
-
-// পাবলিক মেনু কার্ডে অর্ডার বাটনসহ আপডেট
-function renderPublicMenu(filterCategory = 'All') {
-    const grid = document.getElementById('menu-grid');
-    const filterBar = document.getElementById('category-filter');
-    if (!grid || !filterBar) return;
-    grid.innerHTML = '';
-
-    const categories = ['All', ...new Set(menuData.map(i => i.category))];
-
-    filterBar.innerHTML = categories.map(cat => `
-        <button class="filter-chip ${cat === filterCategory ? 'active' : ''}" onclick="renderPublicMenu('${cat}')">${cat}</button>
-    `).join('');
-
-    const filtered = filterCategory === 'All' ? menuData : menuData.filter(i => i.category === filterCategory);
-
-    filtered.forEach(item => {
-        let priceText = item.price ? `৳ ${item.price}` : Object.entries(item.prices).map(([sz, p]) => `${sz}: ৳${p}`).join(' | ');
-        grid.innerHTML += `
-            <div class="menu-card">
-                <span class="category">#${item.id} | ${item.category}</span>
-                <h3>${item.name}</h3>
-                <div class="price">${priceText}</div>
-                <button onclick="openCustomerOrderModal(${item.id})" class="action-btn order-card-btn">🛒 অর্ডার করুন</button>
-            </div>
-        `;
-    });
-}
-
-// অর্ডার মোডাল ওপেন করা
-function openCustomerOrderModal(itemId) {
-    selectedOrderItem = menuData.find(i => i.id === itemId);
-    if (!selectedOrderItem) return;
-
-    document.getElementById('modal-item-name').innerText = selectedOrderItem.name;
-    document.getElementById('modal-item-category').innerText = `#${selectedOrderItem.id} | ${selectedOrderItem.category}`;
-    document.getElementById('modal-item-qty').value = 1;
-
-    const sizeContainer = document.getElementById('modal-size-container');
-    const sizeSelect = document.getElementById('modal-size-select');
-
-    if (selectedOrderItem.prices) {
-        sizeContainer.style.display = 'block';
-        sizeSelect.innerHTML = Object.entries(selectedOrderItem.prices).map(([sz, p]) => 
-            `<option value="${sz}" data-price="${p}">${sz} - ৳${p}</option>`
-        ).join('');
-    } else {
-        sizeContainer.style.display = 'none';
-        sizeSelect.innerHTML = '';
-    }
-
-    updateModalTotalPrice();
-    document.getElementById('customer-order-modal').style.display = 'flex';
-}
-
-function closeCustomerOrderModal() {
-    document.getElementById('customer-order-modal').style.display = 'none';
-    selectedOrderItem = null;
-}
-
-// মোডালে লাইভ টোটাল প্রাইস হিসাব
-function updateModalTotalPrice() {
-    if (!selectedOrderItem) return;
-    const qty = parseInt(document.getElementById('modal-item-qty').value) || 1;
-    let unitPrice = selectedOrderItem.price;
-
-    if (selectedOrderItem.prices) {
-        const sizeSelect = document.getElementById('modal-size-select');
-        const selectedOption = sizeSelect.options[sizeSelect.selectedIndex];
-        unitPrice = parseInt(selectedOption.getAttribute('data-price'));
-    }
-
-    const total = unitPrice * qty;
-    document.getElementById('modal-total-price').innerText = `৳ ${total}`;
-}
-
-// অটোমেটেড হোয়াটসঅ্যাপ মেসেজ তৈরি ও পাঠানো
-function sendWhatsAppOrder() {
-    if (!selectedOrderItem) return;
-
-    const qty = parseInt(document.getElementById('modal-item-qty').value) || 1;
-    let unitPrice = selectedOrderItem.price;
-    let sizeText = '';
-
-    if (selectedOrderItem.prices) {
-        const sizeSelect = document.getElementById('modal-size-select');
-        sizeText = sizeSelect.value;
-        const selectedOption = sizeSelect.options[sizeSelect.selectedIndex];
-        unitPrice = parseInt(selectedOption.getAttribute('data-price'));
-    }
-
-    const total = unitPrice * qty;
-
-    // টেক্সট মেসেজ ফরম্যাটিং
-    let message = `*সপ্ন Fast Food & ক্যাফে - নতুন অর্ডার* 🍔\n\n`;
-    message += `📌 *আইটেম:* ${selectedOrderItem.name}\n`;
-    if (sizeText) message += `📏 *সাইজ:* ${sizeText}\n`;
-    message += `🔢 *পরিমাণ:* ${qty} টি\n`;
-    message += `💰 *মোট মূল্য:* ৳${total}\n\n`;
-    message += `ধন্যবাদ! দয়া করে অর্ডারটি কনফার্ম করুন এবং ডেলিভারি সময় জানান।`;
-
-    const encodedMessage = encodeURIComponent(message);
-    const whatsappUrl = `https://wa.me/${WHATSAPP_BUSINESS_NUMBER}?text=${encodedMessage}`;
-
-    // হোয়াটসঅ্যাপ লিঙ্ক ওপেন
-    window.open(whatsappUrl, '_blank');
-    closeCustomerOrderModal();
-}
-
+// WhatsApp Business Number Configuration (Must be numbers only, no '+' sign)
+const WHATSAPP_BUSINESS_NUMBER = "8801759087421";
 
 let menuData = [];
 let rolesData = {};
 let currentRole = null;
 let cookedLogs = [];
 let soldLogs = [];
+let selectedOrderItem = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     Promise.all([
@@ -153,7 +44,7 @@ async function loadDatabaseFromJSON() {
     }
 }
 
-// Save entry to Vercel API with raw text inspection
+// Save entry to Vercel API
 async function saveToJSONFile(type, logEntry) {
     if (type === 'cooked') {
         cookedLogs.push(logEntry);
@@ -196,7 +87,7 @@ async function saveToJSONFile(type, logEntry) {
     }
 }
 
-// Render Public Menu
+// Render Public Menu with Order Button
 function renderPublicMenu(filterCategory = 'All') {
     const grid = document.getElementById('menu-grid');
     const filterBar = document.getElementById('category-filter');
@@ -218,9 +109,86 @@ function renderPublicMenu(filterCategory = 'All') {
                 <span class="category">#${item.id} | ${item.category}</span>
                 <h3>${item.name}</h3>
                 <div class="price">${priceText}</div>
+                <button onclick="openCustomerOrderModal(${item.id})" class="action-btn order-card-btn">🛒 অর্ডার করুন</button>
             </div>
         `;
     });
+}
+
+// Customer WhatsApp Order Modal Handlers
+function openCustomerOrderModal(itemId) {
+    selectedOrderItem = menuData.find(i => i.id === itemId);
+    if (!selectedOrderItem) return;
+
+    document.getElementById('modal-item-name').innerText = selectedOrderItem.name;
+    document.getElementById('modal-item-category').innerText = `#${selectedOrderItem.id} | ${selectedOrderItem.category}`;
+    document.getElementById('modal-item-qty').value = 1;
+
+    const sizeContainer = document.getElementById('modal-size-container');
+    const sizeSelect = document.getElementById('modal-size-select');
+
+    if (selectedOrderItem.prices) {
+        sizeContainer.style.display = 'block';
+        sizeSelect.innerHTML = Object.entries(selectedOrderItem.prices).map(([sz, p]) => 
+            `<option value="${sz}" data-price="${p}">${sz} - ৳${p}</option>`
+        ).join('');
+    } else {
+        sizeContainer.style.display = 'none';
+        sizeSelect.innerHTML = '';
+    }
+
+    updateModalTotalPrice();
+    document.getElementById('customer-order-modal').style.display = 'flex';
+}
+
+function closeCustomerOrderModal() {
+    document.getElementById('customer-order-modal').style.display = 'none';
+    selectedOrderItem = null;
+}
+
+function updateModalTotalPrice() {
+    if (!selectedOrderItem) return;
+    const qty = parseInt(document.getElementById('modal-item-qty').value) || 1;
+    let unitPrice = selectedOrderItem.price;
+
+    if (selectedOrderItem.prices) {
+        const sizeSelect = document.getElementById('modal-size-select');
+        const selectedOption = sizeSelect.options[sizeSelect.selectedIndex];
+        unitPrice = parseInt(selectedOption.getAttribute('data-price'));
+    }
+
+    const total = unitPrice * qty;
+    document.getElementById('modal-total-price').innerText = `৳ ${total}`;
+}
+
+function sendWhatsAppOrder() {
+    if (!selectedOrderItem) return;
+
+    const qty = parseInt(document.getElementById('modal-item-qty').value) || 1;
+    let unitPrice = selectedOrderItem.price;
+    let sizeText = '';
+
+    if (selectedOrderItem.prices) {
+        const sizeSelect = document.getElementById('modal-size-select');
+        sizeText = sizeSelect.value;
+        const selectedOption = sizeSelect.options[sizeSelect.selectedIndex];
+        unitPrice = parseInt(selectedOption.getAttribute('data-price'));
+    }
+
+    const total = unitPrice * qty;
+
+    let message = `*সপ্ন Fast Food & ক্যাফে - নতুন অর্ডার* 🍔\n\n`;
+    message += `📌 *আইটেম:* ${selectedOrderItem.name}\n`;
+    if (sizeText) message += `📏 *সাইজ:* ${sizeText}\n`;
+    message += `🔢 *পরিমাণ:* ${qty} টি\n`;
+    message += `💰 *মোট মূল্য:* ৳${total}\n\n`;
+    message += `ধন্যবাদ! দয়া করে অর্ডারটি কনফার্ম করুন এবং ডেলিভারি সময় জানান।`;
+
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/${WHATSAPP_BUSINESS_NUMBER}?text=${encodedMessage}`;
+
+    window.open(whatsappUrl, '_blank');
+    closeCustomerOrderModal();
 }
 
 function populateItemSelects() {
@@ -441,4 +409,5 @@ function exportJSONData() {
     a.href = url;
     a.download = `sopno_restaurant_data_${Date.now()}.json`;
     a.click();
-}
+        }
+                                                      
