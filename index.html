@@ -171,6 +171,35 @@
         </section>
     </main>
 
+ <!-- Customer WhatsApp Order Modal -->
+<div id="customer-order-modal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="closeCustomerOrderModal()">&times;</span>
+        <h3 id="modal-item-name">অর্ডার করুন</h3>
+        <p id="modal-item-category" class="category"></p>
+        
+        <div class="portal-form" style="margin-bottom: 0; max-width: 100%;">
+            <div id="modal-size-container" style="display:none;">
+                <label for="modal-size-select">সাইজ পছন্দ করুন:</label>
+                <select id="modal-size-select" onchange="updateModalTotalPrice()"></select>
+            </div>
+
+            <label for="modal-item-qty">পরিমাণ (Quantity):</label>
+            <input type="number" id="modal-item-qty" min="1" value="1" oninput="updateModalTotalPrice()">
+
+            <div class="price-summary">
+                <span>মোট মূল্য: </span>
+                <strong id="modal-total-price" style="color: #c92a2a; font-size: 1.3rem;">৳ 0</strong>
+            </div>
+
+            <button onclick="sendWhatsAppOrder()" class="action-btn wa-btn">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" width="20" height="20" style="vertical-align: middle; margin-right: 8px;">
+                WhatsApp-এ অর্ডার দিন
+            </button>
+        </div>
+    </div>
+</div>
+   
     <!-- Login Modal -->
     <div id="login-modal" class="modal">
         <div class="modal-content">
