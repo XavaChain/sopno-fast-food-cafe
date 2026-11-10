@@ -259,21 +259,38 @@ th {
     margin-top: 0.5rem;
 }
 
-/* Card Order Button */
+/* Industry Grade Professional Green Order Button */
 .order-card-btn {
     width: 100%;
     margin-top: 0.8rem;
-    padding: 0.5rem;
+    padding: 0.65rem 1rem;
     font-size: 0.95rem;
-    background: #1a1a1a;
-    border: 1px solid #ff9900;
-    color: #ff9900;
+    font-weight: 700;
+    background: #25D366; /* WhatsApp & Premium Food-App Green */
+    border: none;
+    color: #ffffff;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.25s ease-in-out;
+    box-shadow: 0 3px 8px rgba(37, 211, 102, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
 }
 
 .order-card-btn:hover {
-    background: #ff9900;
-    color: #1a1a1a;
+    background: #1eb956;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 14px rgba(37, 211, 102, 0.4);
+    color: #ffffff;
 }
+
+.order-card-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 5px rgba(37, 211, 102, 0.2);
+}
+
 
 /* WhatsApp Green Button inside Modal */
 .wa-btn {
