@@ -3,7 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>সপ্ন Fast Food & ক্যাফে</title>
+    
+    <!-- Primary Meta Tags for Google Search -->
+    <title>সপ্ন Fast Food & ক্যাফে | সেরা ফাস্ট ফুড ও ক্যাফে</title>
+    <meta name="title" content="সপ্ন Fast Food & ক্যাফে | সেরা ফাস্ট ফুড ও ক্যাফে">
+    <meta name="description" content="সপ্ন Fast Food & ক্যাফে-তে পান সুস্বাদু ফুচকা, বার্গার, মোমো, পিজ্জা, চাউমিন ও কোল্ড বেভারেজ। আজই অনলাইনে অর্ডার করুন হোয়াটসঅ্যাপের মাধ্যমে।">
+    <meta name="keywords" content="সপ্ন ফাস্ট ফুড, সপ্ন ক্যাফে, ফুচকা, বার্গার, পিজ্জা, মোমো, Fast food cafe, restaurant order">
+    <meta name="robots" content="index, follow">
+
+    <!-- Google Search Console Verification Meta Tag -->
+    <meta name="google-site-verification" content="google5fd4bafee2183b3b" />
+
+    <!-- Open Graph / Facebook / WhatsApp Share Preview -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="সপ্ন Fast Food & ক্যাফে">
+    <meta property="og:description" content="সুস্বাদু ও তাজা ফাস্ট ফুডের অনন্য ঠিকানা। অনলাইন মেনু দেখুন এবং অর্ডার করুন।">
+    <meta property="og:image" content="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1000&q=80">
+    <meta property="og:url" content="https://sopnofastfoodcafe.vercel.app">
+
+    <!-- PWA & Mobile Web App Support -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1a1a1a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="সপ্ন ক্যাফে">
+    <link rel="icon" type="image/svg+xml" href="icon.svg">
+    <link rel="apple-touch-icon" href="icon.svg">
+
+    <!-- Google Restaurant Schema Markup (Structured Data) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FastFoodRestaurant",
+      "name": "সপ্ন Fast Food & ক্যাফে",
+      "image": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1000&q=80",
+      "servesCuisine": "Fast Food, Snacks, Beverages",
+      "priceRange": "৳৳",
+      "telephone": "+8801759087421",
+      "url": "https://sopnofastfoodcafe.vercel.app"
+    }
+    </script>
+
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
@@ -171,34 +211,34 @@
         </section>
     </main>
 
- <!-- Customer WhatsApp Order Modal -->
-<div id="customer-order-modal" class="modal">
-    <div class="modal-content">
-        <span class="close-btn" onclick="closeCustomerOrderModal()">&times;</span>
-        <h3 id="modal-item-name">অর্ডার করুন</h3>
-        <p id="modal-item-category" class="category"></p>
-        
-        <div class="portal-form" style="margin-bottom: 0; max-width: 100%;">
-            <div id="modal-size-container" style="display:none;">
-                <label for="modal-size-select">সাইজ পছন্দ করুন:</label>
-                <select id="modal-size-select" onchange="updateModalTotalPrice()"></select>
+    <!-- Customer WhatsApp Order Modal -->
+    <div id="customer-order-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeCustomerOrderModal()">&times;</span>
+            <h3 id="modal-item-name">অর্ডার করুন</h3>
+            <p id="modal-item-category" class="category"></p>
+            
+            <div class="portal-form" style="margin-bottom: 0; max-width: 100%;">
+                <div id="modal-size-container" style="display:none;">
+                    <label for="modal-size-select">সাইজ পছন্দ করুন:</label>
+                    <select id="modal-size-select" onchange="updateModalTotalPrice()"></select>
+                </div>
+
+                <label for="modal-item-qty">পরিমাণ (Quantity):</label>
+                <input type="number" id="modal-item-qty" min="1" value="1" oninput="updateModalTotalPrice()">
+
+                <div class="price-summary">
+                    <span>মোট মূল্য: </span>
+                    <strong id="modal-total-price" style="color: #c92a2a; font-size: 1.3rem;">৳ 0</strong>
+                </div>
+
+                <button onclick="sendWhatsAppOrder()" class="action-btn wa-btn">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" width="20" height="20" style="vertical-align: middle; margin-right: 8px;">
+                    WhatsApp-এ অর্ডার দিন
+                </button>
             </div>
-
-            <label for="modal-item-qty">পরিমাণ (Quantity):</label>
-            <input type="number" id="modal-item-qty" min="1" value="1" oninput="updateModalTotalPrice()">
-
-            <div class="price-summary">
-                <span>মোট মূল্য: </span>
-                <strong id="modal-total-price" style="color: #c92a2a; font-size: 1.3rem;">৳ 0</strong>
-            </div>
-
-            <button onclick="sendWhatsAppOrder()" class="action-btn wa-btn">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" width="20" height="20" style="vertical-align: middle; margin-right: 8px;">
-                WhatsApp-এ অর্ডার দিন
-            </button>
         </div>
     </div>
-</div>
    
     <!-- Login Modal -->
     <div id="login-modal" class="modal">
@@ -214,5 +254,4 @@
 
     <script src="app.js"></script>
 </body>
-  </html>
-  
+</html>
