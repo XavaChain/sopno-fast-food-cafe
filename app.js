@@ -177,7 +177,7 @@ function sendWhatsAppOrder() {
 
     const total = unitPrice * qty;
 
-    let message = `*সপ্ন Fast Food & ক্যাফে - নতুন অর্ডার* 🍔\n\n`;
+    let message = `*স্বপ্ন Fast Food & ক্যাফে - নতুন অর্ডার* 🍔\n\n`;
     message += `📌 *আইটেম:* ${selectedOrderItem.name}\n`;
     if (sizeText) message += `📏 *সাইজ:* ${sizeText}\n`;
     message += `🔢 *পরিমাণ:* ${qty} টি\n`;
