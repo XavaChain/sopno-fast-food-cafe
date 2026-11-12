@@ -87,7 +87,7 @@ async function saveToJSONFile(type, logEntry) {
     }
 }
 
-// Render Public Menu with Order Button
+// Render Public Menu with Item Photos & Order Button
 function renderPublicMenu(filterCategory = 'All') {
     const grid = document.getElementById('menu-grid');
     const filterBar = document.getElementById('category-filter');
@@ -106,6 +106,7 @@ function renderPublicMenu(filterCategory = 'All') {
         let priceText = item.price ? `৳ ${item.price}` : Object.entries(item.prices).map(([sz, p]) => `${sz}: ৳${p}`).join(' | ');
         grid.innerHTML += `
             <div class="menu-card">
+                <img src="images/${item.id}.jpg" alt="${item.name}" class="menu-item-img" loading="lazy" onerror="this.style.display='none'">
                 <span class="category">#${item.id} | ${item.category}</span>
                 <h3>${item.name}</h3>
                 <div class="price">${priceText}</div>
@@ -409,5 +410,5 @@ function exportJSONData() {
     a.href = url;
     a.download = `sopno_restaurant_data_${Date.now()}.json`;
     a.click();
-        }
-                                                      
+}
+    
